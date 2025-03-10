@@ -87,13 +87,13 @@ def perform_ner():
 @app.route('/sentiment_analysis')
 def sentiment_analysis():
     if 'user' in session:
-        return "sentiment_analysis hoga yrr"  
+        return redirect('/')  
     else:
         return redirect('/')      
 @app.route('/abuse_detection')
 def abuse_detection():
     if 'user' in session:
-        return "abuse_detection hoga yrr"   
+        return redirect('/')   
     else:
         return redirect('/')   
 
