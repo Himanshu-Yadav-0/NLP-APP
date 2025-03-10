@@ -1,7 +1,7 @@
 # NLP Web App
 
 ## Overview
-This is a Flask-based NLP web application that implements **Named Entity Recognition (NER)** using **spaCy** and many more yet to implement. The application allows users to register, log in, and extract named entities from the text.
+This is a Flask-based NLP web application that implements **Named Entity Recognition (NER)** using **spaCy** and many more features yet to be implemented. The application allows users to register, log in, and extract named entities from the text.
 
 ## Features
 - User authentication (Registration & Login)
@@ -9,7 +9,8 @@ This is a Flask-based NLP web application that implements **Named Entity Recogni
 - Web-based UI using Flask & Jinja2 templates
 - JSON-based user storage (No SQL database required)
 - Containerized deployment using **Docker**
-- Hosted on **Google Cloud Run**
+- **CI/CD pipeline using Jenkins**
+- **Deployed on Google Cloud Compute Engine**
 
 ## Tech Stack
 - **Backend:** Flask
@@ -17,7 +18,8 @@ This is a Flask-based NLP web application that implements **Named Entity Recogni
 - **Frontend:** Jinja2, HTML, CSS
 - **Storage:** JSON-based user database
 - **Containerization:** Docker
-- **Cloud Deployment:** Google Cloud Run
+- **CI/CD:** Jenkins
+- **Cloud Deployment:** Google Cloud Compute Engine
 
 ## Installation
 
@@ -53,43 +55,85 @@ pip install -r requirements.txt
 
 2. **Build and tag the Docker image:**
    ```bash
-   docker build -t <image-name> .
+   docker build -t nlp-app .
    ```
 
 3. **Run the container locally (optional test):**
    ```bash
-   docker run -p 5050:5050 <image-name>
+   docker run -p 5050:5050 nlp-app
    ```
 
-### **Pushing Docker Image to Google Cloud Artifact Registry**
+---
 
-1. **Authenticate Docker with Google Cloud:**
+## CI/CD Pipeline using Jenkins
+
+### **Setting up Jenkins for CI/CD**
+1. **Install Jenkins on Google Cloud Compute Engine:**
+   - Deploy a VM instance on GCP.
+   - Install Jenkins:
+     ```bash
+     sudo apt update
+     sudo apt install openjdk-11-jdk -y
+     wget -q -O - https://pkg.jenkins.io/debian-stable/jenkins.io.key | sudo tee /usr/share/keyrings/jenkins-keyring.asc > /dev/null
+     echo "deb [signed-by=/usr/share/keyrings/jenkins-keyring.asc] https://pkg.jenkins.io/debian-stable binary/" | sudo tee /etc/apt/sources.list.d/jenkins.list > /dev/null
+     sudo apt update
+     sudo apt install jenkins -y
+     sudo systemctl enable jenkins
+     sudo systemctl start jenkins
+     ```
+
+2. **Setup Jenkins Job for Automated Deployment:**
+   - In Jenkins, create a new freestyle project.
+   - Under `Source Code Management`, select Git and provide your repository URL.
+   - Add the following build steps under `Execute Shell`:
+     ```bash
+     docker stop nlp-app || true
+     docker rm nlp-app || true
+     docker build -t nlp-app .
+     docker run -p 5050:5050 -d nlp-app
+     ```
+   - Save and run the job.
+
+---
+
+## Deploying to Google Cloud Compute Engine
+
+### **Steps to Deploy on GCP VM**
+
+1. **Create a GCP VM instance:**
    ```bash
-   gcloud auth configure-docker <region>-docker.pkg.dev
+   gcloud compute instances create nlp-app-server \
+       --machine-type=e2-medium \
+       --image-family=debian-11 \
+       --image-project=debian-cloud \
+       --boot-disk-size=20GB \
+       --tags=http-server,https-server \
+       --metadata=startup-script="sudo apt update && sudo apt install -y docker.io && sudo systemctl start docker"
    ```
 
-2. **Tag the Docker image for Artifact Registry:**
+2. **SSH into the VM and pull the repository:**
    ```bash
-   docker tag <image-name> <region>-docker.pkg.dev/<project-id>/<repo-name>/<image-name>
+   gcloud compute ssh nlp-app-server
+   git clone https://github.com/Himanshu-Yadav-0/NLP-APP.git
+   cd NLP-APP
    ```
 
-3. **Push the image to Artifact Registry:**
+3. **Run the container on the VM:**
    ```bash
-   docker push <region>-docker.pkg.dev/<project-id>/<repo-name>/<image-name>
+   docker build -t nlp-app .
+   docker run -p 5050:5050 -d nlp-app
    ```
 
-### **Deploying to Google Cloud Run**
-
-1. **Deploy using `gcloud run deploy`:**
+4. **Configure Firewall Rules for External Access:**
    ```bash
-   gcloud run deploy <service-name> \
-     --image=<region>-docker.pkg.dev/<project-id>/<repo-name>/<image-name> \
-     --platform managed \
-     --region=<region> \
-     --allow-unauthenticated
+   gcloud compute firewall-rules create allow-nlp-app \
+       --allow=tcp:5050 --source-ranges=0.0.0.0/0
    ```
 
-2. **Retrieve the service URL and access the application.**
+5. **Access the application at:**
+   ```
+   http://<your-vm-external-ip>:5050
+   ```
 
 ---
 
